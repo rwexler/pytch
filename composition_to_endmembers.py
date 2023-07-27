@@ -1,7 +1,4 @@
-import os
-
-from mp_api.client import MPRester
-from pymatgen.core import Species, Composition, Structure
+import pandas as pd
 
 alphabet = "abcdefghijklmnopqrstuvwxyz"
 
@@ -19,7 +16,7 @@ def compute_end_members(oxidation_state_A, oxidation_state_B, target_total_metal
     # metal excess and metals have different oxidation states
     elif total_metal_charge == 7:
         N_As = [1, (target_total_metal_charge - oxidation_state_B) / oxidation_state_A]
-        N_Bs = [1, (target_total_metal_charge - oxidation_state_A) / oxidation_state_B]
+        N_Bs = [(target_total_metal_charge - oxidation_state_A) / oxidation_state_B, 1]
         if oxidation_state_A == 3 or oxidation_state_B == 3:
             N_O = 3
 
@@ -66,32 +63,20 @@ def main(sites_metals_oxidation_states, target_total_metal_charge=6):
 
 
 if __name__ == "__main__":
-    sites_metals_oxidation_states = {
-        "A": {"Ca": [2], "Ce": [3, 4]},
-        "B": {"Ti": [3, 4], "Mn": [2, 3, 4]}
-    }
-    end_members = main(sites_metals_oxidation_states)
-    for end_member in end_members:
-        # get formula
-        A = Species(end_member["A"]["element"], end_member["A"]["oxidation_state"])
-        B = Species(end_member["B"]["element"], end_member["B"]["oxidation_state"])
-        O = Species(end_member["O"]["element"], end_member["O"]["oxidation_state"])
-        species = {
-            A: end_member["A"]["N"],
-            B: end_member["B"]["N"],
-            O: end_member["O"]["N"]
-        }
-        composition = Composition(species)
-        formula, factor = composition.get_integer_formula_and_factor()
+    ems = main({"A": {"Ca": [2], "Ce": [3, 4]}, "B": {"Ti": [3, 4], "Mn": [2, 3, 4]}})
 
-        # get materials project documents
-        get_materials_project_documents = False
-        if get_materials_project_documents:
-            with MPRester(os.getenv("MATERIALS_PROJECT_API_KEY")) as mpr:
-                docs = mpr.summary.search(
-                    formula=formula,
-                    theoretical=False,
-                )
+    # convert to pandas dataframe
+    df_A = pd.DataFrame([x["A"] for x in ems])
+    df_B = pd.DataFrame([x["B"] for x in ems])
+    df_O = pd.DataFrame([x["O"] for x in ems])
+    df_end_member = pd.DataFrame([x["end_member"] for x in ems], columns=["end_member"])
+    df_configuration = pd.DataFrame([x["configuration"] for x in ems], columns=["configuration"])
 
-        # get structure for composition
-        structure = Structure.from_file("CaTiO3.vasp")
+    # rename columns
+    df_A = df_A.rename(columns={"element": "element_A", "oxidation_state": "oxidation_state_A", "N": "N_A"})
+    df_B = df_B.rename(columns={"element": "element_B", "oxidation_state": "oxidation_state_B", "N": "N_B"})
+    df_O = df_O.rename(columns={"element": "element_O", "oxidation_state": "oxidation_state_O", "N": "N_O"})
+    df = pd.concat([df_A, df_B, df_O, df_end_member, df_configuration], axis=1)
+
+    # write to csv
+    df.to_csv("end_members.csv", index=False)

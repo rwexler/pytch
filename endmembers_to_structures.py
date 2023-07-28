@@ -21,12 +21,12 @@ def main():
         new_structure.replace_species({"Ca": df["element_A"][i], "Ti": df["element_B"][i]})
 
         # Make directory for the end member configuration
-        directory = f"end_member_{df['end_member'][i]}_configuration_{df['configuration'][i]}"
+        directory = f"end_member_{df['end_member'][i]:02d}_configuration_{df['configuration'][i]}"
         if not os.path.exists(directory):
             os.mkdir(directory)
 
         if df["N_A"][i] == 1 and df["N_B"][i] == 1 and df["N_O"][i] == 3:
-            new_structure.to(filename=f"{directory}/POSCAR.vasp", fmt="poscar")
+            new_structure.to(filename=f"{directory}/POSCAR_00.vasp", fmt="poscar")
 
         elif df["N_O"][i] == 2.5:
             first_vacancies = generate_vacancies(new_structure, rm_species="O")
@@ -34,7 +34,7 @@ def main():
             for first_vacancy in first_vacancies:
                 second_vacancies.extend(generate_vacancies(first_vacancy, rm_species="O"))
             for j, vacancy_structure in enumerate(second_vacancies):
-                vacancy_structure.to(filename=f"{directory}/POSCAR_{j}.vasp", fmt="poscar")
+                vacancy_structure.to(filename=f"{directory}/POSCAR_{j:02d}.vasp", fmt="poscar")
 
         elif df["N_O"][i] == 2:
             first_vacancies = generate_vacancies(new_structure, rm_species="O")
@@ -54,13 +54,50 @@ def main():
         elif df["N_A"][i] == 1 and df["N_B"][i] == 0.75:
             vacancies = generate_vacancies(new_structure, rm_species=df["element_B"][i])
             for j, vacancy_structure in enumerate(vacancies):
-                vacancy_structure.to(filename=f"{directory}/POSCAR_{j}.vasp", fmt="poscar")
+                vacancy_structure.to(filename=f"{directory}/POSCAR_{j:02d}.vasp", fmt="poscar")
 
         elif df["N_A"][i] == 2 / 3 and df["N_B"][i] == 1:
             with open(f"{directory}/README", "w") as f:
                 f.write("It's hard to achieve 2/3 occupation on the A- and B-sites in an orthorhombic cell. How can we "
                         "deal with this? Try to find an experimental structure?\n")
-            break
+
+        elif df["N_A"][i] == 1 and df["N_B"][i] == 2 / 3:
+            with open(f"{directory}/README", "w") as f:
+                f.write("It's hard to achieve 2/3 occupation on the A- and B-sites in an orthorhombic cell. How can we "
+                        "deal with this? Try to find an experimental structure?\n")
+
+        elif df["N_A"][i] == 0.75 and df["N_B"][i] == 1:
+            vacancies = generate_vacancies(new_structure, rm_species=df["element_A"][i])
+            for j, vacancy_structure in enumerate(vacancies):
+                vacancy_structure.to(filename=f"{directory}/POSCAR_{j:02d}.vasp", fmt="poscar")
+
+        elif df["N_A"][i] == 1 and df["N_B"][i] == 0.5:
+            first_vacancies = generate_vacancies(new_structure, rm_species=df["element_B"][i])
+            second_vacancies = []
+            for first_vacancy in first_vacancies:
+                second_vacancies.extend(generate_vacancies(first_vacancy, rm_species=df["element_B"][i]))
+            for j, vacancy_structure in enumerate(second_vacancies):
+                vacancy_structure.to(filename=f"{directory}/POSCAR_{j:02d}.vasp", fmt="poscar")
+
+        elif df["N_A"][i] == 0.5 and df["N_B"][i] == 1:
+            first_vacancies = generate_vacancies(new_structure, rm_species=df["element_A"][i])
+            second_vacancies = []
+            for first_vacancy in first_vacancies:
+                second_vacancies.extend(generate_vacancies(first_vacancy, rm_species=df["element_A"][i]))
+            for j, vacancy_structure in enumerate(second_vacancies):
+                vacancy_structure.to(filename=f"{directory}/POSCAR_{j:02d}.vasp", fmt="poscar")
+
+        elif df["N_A"][i] == 0.75 and df["N_B"][i] == 0.75:
+            first_vacancies = generate_vacancies(new_structure, rm_species=df["element_A"][i])
+            second_vacancies = []
+            for first_vacancy in first_vacancies:
+                second_vacancies.extend(generate_vacancies(first_vacancy, rm_species=df["element_B"][i]))
+            for j, vacancy_structure in enumerate(second_vacancies):
+                vacancy_structure.to(filename=f"{directory}/POSCAR_{j:02d}.vasp", fmt="poscar")
+
+        else:
+            print("Error: The end member configuration is not recognized.")
+            print(df["end_member"][i], df["configuration"][i])
 
 
 if __name__ == "__main__":
